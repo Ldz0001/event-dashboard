@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Global Progress Tracker</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+  <style>
+    progress { width: 100%; margin-bottom: 1rem; }
+    section { margin-bottom: 2rem; }
+  </style>
+</head>
+<body>
+
+<nav class="container-fluid">
+  <ul>
+    <li><strong>Event BI</strong></li>
+  </ul>
+  <ul>
+    <li><a href="index.html">Home</a></li>
+    <li><a href="event-tasks.html">Event Tasks</a></li>
+    <li><a href="global-progress.html">Global Progress</a></li>
+  </ul>
+</nav>
+
+<main class="container">
+  <h2>Global Task Progress Overview</h2>
+  <div id="globalProgress"></div>
+
+  <section>
+    <h3>Total Completion Rate</h3>
+    <progress id="totalProgress" value="0" max="100"></progress>
+    <p id="summary"></p>
+  </section>
+</main>
+
+<footer class="container">
+  <small><a href="#">Terms</a> • <a href="#">Privacy</a></small>
+</footer>
+
+<script>
+  function loadGlobalProgress() {
+    const tasks = JSON.parse(localStorage.getItem('eventTasks') || '{}');
+    const globalDiv = document.getElementById('globalProgress');
+    const totalProgress = document.getElementById('totalProgress');
+    const summary = document.getElementById('summary');
+    globalDiv.innerHTML = '';
+
+    let totalTasks = 0;
+    let totalCompleted = 0;
+
+    Object.keys(tasks).forEach(event => {
+      const eventTasks = tasks[event];
+      const completed = eventTasks.filter(t => t.done).length;
+      const percent = eventTasks.length ? Math.round((completed / eventTasks.length) * 100) : 0;
+
+      totalTasks += eventTasks.length;
+      totalCompleted += completed;
+
+      const section = document.createElement('section');
+      section.innerHTML = `
+        <h3>${event}</h3>
+        <progress value="${percent}" max="100"></progress>
+        <p>${completed} of ${eventTasks.length} tasks complete (${percent}%)</p>
+      `;
+      globalDiv.appendChild(section);
+    });
+
+    const totalPercent = totalTasks ? Math.round((totalCompleted / totalTasks) * 100) : 0;
+    totalProgress.value = totalPercent;
+    summary.textContent = `${totalCompleted} of ${totalTasks} total tasks completed (${totalPercent}%)`;
+  }
+
+  loadGlobalProgress();
+</script>
+
+</body>
+</html>
