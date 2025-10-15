@@ -1,15 +1,32 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Event Planning BI Dashboard</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     #map { height: 400px; margin-bottom: 2rem; }
-    .task-list label { display: flex; align-items: center; margin-bottom: 0.5rem; }
-    .task-list input[type="checkbox"] { margin-right: 0.5rem; }
+    .autocomplete-list {
+      background: white;
+      border: 1px solid #ccc;
+      max-height: 150px;
+      overflow-y: auto;
+      position: absolute;
+      z-index: 1000;
+      width: 100%;
+    }
+    .autocomplete-list div {
+      padding: 8px;
+      cursor: pointer;
+    }
+    .autocomplete-list div:hover {
+      background: #eee;
+    }
+    .autocomplete-wrapper {
+      position: relative;
+    }
   </style>
 </head>
 <body>
@@ -32,8 +49,11 @@
   <h3>Add New Event</h3>
   <form id="addEventForm" class="grid">
     <input type="text" id="eventName" placeholder="Event Name" required />
-    <input type="date" id="eventDate" placeholder="Event Date (YYYY-MM-DD)" required />
-    <input type="text" id="eventAddress" placeholder="Event Address (e.g. Mexico City)" required />
+    <input type="date" id="eventDate" placeholder="Event Date" required />
+    <div class="autocomplete-wrapper">
+      <input type="text" id="eventAddress" placeholder="Start typing address..." required autocomplete="off" />
+      <div id="autocompleteResults" class="autocomplete-list"></div>
+    </div>
     <button type="submit">Add Event</button>
   </form>
 </main>
@@ -44,12 +64,15 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const map = L.map('map').setView([23.6345, -102.5528], 5); // Center of Mexico
+  const map = L.map('map').setView([23.6345, -102.5528], 5); // Mexico center
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
   }).addTo(map);
 
   const markers = {};
+  const addressInput = document.getElementById('eventAddress');
+  const autocompleteBox = document.getElementById('autocompleteResults');
+  let selectedCoords = null;
 
   function saveEvents(events) {
     localStorage.setItem('mapEvents', JSON.stringify(events));
@@ -72,41 +95,71 @@
   }
 
   function markComplete(id) {
-    let events = JSON.parse(localStorage.getItem('mapEvents') || '[]');
-    events = events.filter(event => event.id !== id);
-    saveEvents(events);
-    if (markers[id]) {
-      map.removeLayer(markers[id]);
-      delete markers[id];
-    }
+  let events = JSON.parse(localStorage.getItem('mapEvents') || '[]');
+  events = events.filter(event => event.id !== id);
+  saveEvents(events);
+  if (markers[id]) {
+    map.closePopup(); // Close any open popup
+    map.removeLayer(markers[id]);
+    delete markers[id];
   }
+}
 
-  document.getElementById('addEventForm').addEventListener('submit', async (e) => {
+
+  document.getElementById('addEventForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const name = document.getElementById('eventName').value.trim();
     const date = document.getElementById('eventDate').value.trim();
-    const address = document.getElementById('eventAddress').value.trim();
-    if (!name || !date || !address) return;
-
-    const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
-    const response = await fetch(geocodeUrl);
-    const result = await response.json();
-
-    if (!result || result.length === 0) {
-      alert('Address not found');
+    const address = addressInput.value.trim();
+    if (!name || !date || !address || !selectedCoords) {
+      alert("Please select a valid address from suggestions.");
       return;
     }
 
-    const lat = parseFloat(result[0].lat);
-    const lng = parseFloat(result[0].lon);
-    const id = Date.now().toString();
-    const newEvent = { id, name, date, address, lat, lng };
+    const newEvent = {
+      id: Date.now().toString(),
+      name,
+      date,
+      address,
+      lat: selectedCoords.lat,
+      lng: selectedCoords.lon
+    };
 
     const events = JSON.parse(localStorage.getItem('mapEvents') || '[]');
     events.push(newEvent);
     saveEvents(events);
     addMarkerToMap(newEvent);
     e.target.reset();
+    selectedCoords = null;
+    autocompleteBox.innerHTML = '';
+  });
+
+  addressInput.addEventListener('input', async () => {
+    const query = addressInput.value.trim();
+    if (query.length < 3) {
+      autocompleteBox.innerHTML = '';
+      return;
+    }
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`;
+    const response = await fetch(url);
+    const results = await response.json();
+    autocompleteBox.innerHTML = '';
+    results.forEach(result => {
+      const item = document.createElement('div');
+      item.textContent = result.display_name;
+      item.addEventListener('click', () => {
+        addressInput.value = result.display_name;
+        selectedCoords = { lat: parseFloat(result.lat), lon: parseFloat(result.lon) };
+        autocompleteBox.innerHTML = '';
+      });
+      autocompleteBox.appendChild(item);
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.autocomplete-wrapper')) {
+      autocompleteBox.innerHTML = '';
+    }
   });
 
   loadEvents();
