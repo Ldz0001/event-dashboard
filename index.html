@@ -26,41 +26,17 @@
 </nav>
 
 <main class="container">
-  <div class="grid">
-    <section>
-      <hgroup>
-        <h2>Upcoming Event</h2>
-        <h3>Dummy Event: Tech Conference 2025</h3>
-      </hgroup>
-      <p><strong>Date:</strong> November 20, 2025<br><strong>Location:</strong> Mexico City</p>
-      <div class="task-list">
-        <h3>Checklist</h3>
-        <label><input type="checkbox" /> Book venue</label>
-        <label><input type="checkbox" /> Send invitations</label>
-        <label><input type="checkbox" /> Arrange catering</label>
-      </div>
-      <h3>Event Map</h3>
-      <div id="map"></div>
-    </section>
-  </div>
-</main>
+  <h2>Event Map</h2>
+  <div id="map"></div>
 
-<section aria-label="Add Event Form">
-  <div class="container">
-    <article>
-      <hgroup>
-        <h2>Add New Event</h2>
-        <h3>Quick Event Entry (Demo only)</h3>
-      </hgroup>
-      <form class="grid">
-        <input type="text" id="eventname" name="eventname" placeholder="Event Name" aria-label="Event Name" required />
-        <input type="text" id="location" name="location" placeholder="City" aria-label="Location" required />
-        <input type="date" id="date" name="date" aria-label="Date" required />
-        <button type="submit" onclick="event.preventDefault(); alert('Event added (not saved - demo only)')">Add Event</button>
-      </form>
-    </article>
-  </div>
-</section>
+  <h3>Add New Event</h3>
+  <form id="addEventForm" class="grid">
+    <input type="text" id="eventName" placeholder="Event Name" required />
+    <input type="date" id="eventDate" placeholder="Event Date (YYYY-MM-DD)" required />
+    <input type="text" id="eventAddress" placeholder="Event Address (e.g. Mexico City)" required />
+    <button type="submit">Add Event</button>
+  </form>
+</main>
 
 <footer class="container">
   <small><a href="#">Terms</a> • <a href="#">Privacy</a></small>
@@ -68,13 +44,72 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const map = L.map('map').setView([19.4326, -99.1332], 5); // Mexico City
+  const map = L.map('map').setView([23.6345, -102.5528], 5); // Center of Mexico
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
   }).addTo(map);
 
-  const dummyEvent = L.marker([19.4326, -99.1332]).addTo(map);
-  dummyEvent.bindPopup('<strong>Tech Conference 2025</strong><br>Mexico City<br>Nov 20, 2025');
+  const markers = {};
+
+  function saveEvents(events) {
+    localStorage.setItem('mapEvents', JSON.stringify(events));
+  }
+
+  function loadEvents() {
+    const data = JSON.parse(localStorage.getItem('mapEvents') || '[]');
+    data.forEach(event => addMarkerToMap(event));
+  }
+
+  function addMarkerToMap(event) {
+    const marker = L.marker([event.lat, event.lng]).addTo(map);
+    marker.bindPopup(`
+      <strong>${event.name}</strong><br>
+      ${event.address}<br>
+      ${event.date}<br>
+      <button onclick="markComplete('${event.id}')">Mark as Completed</button>
+    `);
+    markers[event.id] = marker;
+  }
+
+  function markComplete(id) {
+    let events = JSON.parse(localStorage.getItem('mapEvents') || '[]');
+    events = events.filter(event => event.id !== id);
+    saveEvents(events);
+    if (markers[id]) {
+      map.removeLayer(markers[id]);
+      delete markers[id];
+    }
+  }
+
+  document.getElementById('addEventForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('eventName').value.trim();
+    const date = document.getElementById('eventDate').value.trim();
+    const address = document.getElementById('eventAddress').value.trim();
+    if (!name || !date || !address) return;
+
+    const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`;
+    const response = await fetch(geocodeUrl);
+    const result = await response.json();
+
+    if (!result || result.length === 0) {
+      alert('Address not found');
+      return;
+    }
+
+    const lat = parseFloat(result[0].lat);
+    const lng = parseFloat(result[0].lon);
+    const id = Date.now().toString();
+    const newEvent = { id, name, date, address, lat, lng };
+
+    const events = JSON.parse(localStorage.getItem('mapEvents') || '[]');
+    events.push(newEvent);
+    saveEvents(events);
+    addMarkerToMap(newEvent);
+    e.target.reset();
+  });
+
+  loadEvents();
 </script>
 
 </body>
