@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Event Planning BI Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    #map { height: 400px; margin-bottom: 2rem; }
+    .task-list label { display: flex; align-items: center; margin-bottom: 0.5rem; }
+    .task-list input[type="checkbox"] { margin-right: 0.5rem; }
+  </style>
+</head>
+<body>
+
+<nav class="container-fluid">
+  <ul>
+    <li><strong>Event BI</strong></li>
+  </ul>
+  <ul>
+    <li><a href="index.html">Home</a></li>
+    <li><a href="event-tasks.html">Event Tasks</a></li>
+    <li><a href="global-progress.html">Global Progress</a></li>
+  </ul>
+</nav>
+
+<main class="container">
+  <div class="grid">
+    <section>
+      <hgroup>
+        <h2>Upcoming Event</h2>
+        <h3>Dummy Event: Tech Conference 2025</h3>
+      </hgroup>
+      <p><strong>Date:</strong> November 20, 2025<br><strong>Location:</strong> Mexico City</p>
+      <div class="task-list">
+        <h3>Checklist</h3>
+        <label><input type="checkbox" /> Book venue</label>
+        <label><input type="checkbox" /> Send invitations</label>
+        <label><input type="checkbox" /> Arrange catering</label>
+      </div>
+      <h3>Event Map</h3>
+      <div id="map"></div>
+    </section>
+  </div>
+</main>
+
+<section aria-label="Add Event Form">
+  <div class="container">
+    <article>
+      <hgroup>
+        <h2>Add New Event</h2>
+        <h3>Quick Event Entry (Demo only)</h3>
+      </hgroup>
+      <form class="grid">
+        <input type="text" id="eventname" name="eventname" placeholder="Event Name" aria-label="Event Name" required />
+        <input type="text" id="location" name="location" placeholder="City" aria-label="Location" required />
+        <input type="date" id="date" name="date" aria-label="Date" required />
+        <button type="submit" onclick="event.preventDefault(); alert('Event added (not saved - demo only)')">Add Event</button>
+      </form>
+    </article>
+  </div>
+</section>
+
+<footer class="container">
+  <small><a href="#">Terms</a> • <a href="#">Privacy</a></small>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const map = L.map('map').setView([19.4326, -99.1332], 5); // Mexico City
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  const dummyEvent = L.marker([19.4326, -99.1332]).addTo(map);
+  dummyEvent.bindPopup('<strong>Tech Conference 2025</strong><br>Mexico City<br>Nov 20, 2025');
+</script>
+
+</body>
+</html>
