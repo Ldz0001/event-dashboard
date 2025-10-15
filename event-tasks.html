@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Event Task Tracker</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css" />
+  <style>
+    .task-group { margin-bottom: 2rem; }
+    progress { width: 100%; margin-bottom: 1rem; }
+    .form-grid { display: grid; gap: 1rem; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+
+<nav class="container-fluid">
+  <ul>
+    <li><strong>Event BI</strong></li>
+  </ul>
+  <ul>
+    <li><a href="index.html">Home</a></li>
+    <li><a href="event-tasks.html">Event Tasks</a></li>
+    <li><a href="global-progress.html">Global Progress</a></li>
+  </ul>
+</nav>
+
+<main class="container">
+  <h2>Track Tasks by Event</h2>
+  <div id="taskContainer"></div>
+
+  <article>
+    <h3>Add Task to Event</h3>
+    <form id="addTaskForm" class="form-grid">
+      <select id="eventSelect">
+        <option value="">-- Select an existing event --</option>
+      </select>
+      <input type="text" id="newEventName" placeholder="Or enter a new event name" />
+      <input type="text" id="taskDescription" placeholder="Task Description" required />
+      <button type="submit">Add Task</button>
+    </form>
+  </article>
+</main>
+
+<footer class="container">
+  <small><a href="#">Terms</a> • <a href="#">Privacy</a></small>
+</footer>
+
+<script>
+  const taskContainer = document.getElementById('taskContainer');
+  const addTaskForm = document.getElementById('addTaskForm');
+  const eventSelect = document.getElementById('eventSelect');
+
+  function loadEventDropdown(tasks) {
+    eventSelect.innerHTML = '<option value="">-- Select an existing event --</option>';
+    Object.keys(tasks).forEach(event => {
+      const option = document.createElement('option');
+      option.value = event;
+      option.textContent = event;
+      eventSelect.appendChild(option);
+    });
+  }
+
+  function loadTasks() {
+    const tasks = JSON.parse(localStorage.getItem('eventTasks') || '{}');
+    taskContainer.innerHTML = '';
+    loadEventDropdown(tasks);
+
+    Object.keys(tasks).forEach(event => {
+      const eventTasks = tasks[event];
+      const completed = eventTasks.filter(t => t.done).length;
+      const percent = eventTasks.length ? Math.round((completed / eventTasks.length) * 100) : 0;
+
+      const section = document.createElement('section');
+      section.className = 'task-group';
+      section.innerHTML = `
+        <h3>${event}</h3>
+        <progress value="${percent}" max="100"></progress>
+      `;
+
+      eventTasks.forEach((task, index) => {
+        const label = document.createElement('label');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = task.done;
+        checkbox.addEventListener('change', () => {
+          task.done = checkbox.checked;
+          tasks[event][index] = task;
+          localStorage.setItem('eventTasks', JSON.stringify(tasks));
+          loadTasks();
+        });
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(task.description));
+        section.appendChild(label);
+      });
+
+      taskContainer.appendChild(section);
+    });
+  }
+
+  addTaskForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const tasks = JSON.parse(localStorage.getItem('eventTasks') || '{}');
+    const newEvent = document.getElementById('newEventName').value.trim();
+    const selectedEvent = eventSelect.value.trim();
+    const eventName = newEvent || selectedEvent;
+    const taskDescription = document.getElementById('taskDescription').value.trim();
+
+    if (!eventName || !taskDescription) {
+      return alert("Please fill in the event and task.");
+    }
+
+    if (!tasks[eventName]) tasks[eventName] = [];
+    tasks[eventName].push({ description: taskDescription, done: false });
+
+    localStorage.setItem('eventTasks', JSON.stringify(tasks));
+    addTaskForm.reset();
+    loadTasks();
+  });
+
+  loadTasks();
+</script>
+
+</body>
+</html>
